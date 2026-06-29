@@ -1,26 +1,25 @@
 import streamlit as st
-import requests
+from serpapi import GoogleSearch
 import pandas as pd
 import time
 
-st.set_page_config(page_title="Google Rank Tracker (Optimized)", page_icon="🔍", layout="wide")
+st.set_page_config(page_title="Google Rank Tracker (Official SDK)", page_icon="🔍", layout="wide")
 
-st.title("🔍 Google Rank Tracker App (Anti-Timeout Version)")
-st.write("Aplikasi pelacak posisi stabil dengan optimasi performa jaringan.")
+st.title("🔍 Google Rank Tracker App (Official SDK)")
+st.write("Menggunakan pustaka resmi SerpApi untuk stabilitas koneksi maksimum.")
 
 SERPAPI_KEY = st.sidebar.text_input("Masukkan SerpApi Key Anda", type="password")
 st.sidebar.markdown("[Dapatkan API Key Gratis di SerpApi.com](https://serpapi.com)")
 
 with st.form("seo_form"):
-    domain_input = st.text_input("Masukkan Domain Anda (Contoh: situsanda.com)", placeholder="vitalartists.com")
+    domain_input = st.text_input("Masukkan Domain Anda", placeholder="vitalartists.com")
     keywords_input = st.text_area("Masukkan Kata Kunci (Satu per baris)", placeholder="lgogacor")
     submit_button = st.form_submit_button("Mulai Cari Posisi")
 
-def cek_posisi_serpapi(domain_target, keyword, api_key):
+def cek_posisi_sdk(domain_target, keyword, api_key):
     if not api_key:
         return "API Key Kosong", "-", "-"
         
-    url = "https://serpapi.com/search"
     params = {
         "engine": "google",
         "q": keyword,
@@ -30,40 +29,32 @@ def cek_posisi_serpapi(domain_target, keyword, api_key):
         "api_key": api_key
     }
     
-    # Mencoba hingga 3 kali jika terjadi gangguan jaringan/timeout
-    for mencoba in range(3):
-        try:
-            # Gunakan timeout yang lebih panjang (30 detik)
-            response = requests.get(url, params=params, timeout=30)
+    try:
+        # Menggunakan SDK resmi SerpApi
+        search = GoogleSearch(params)
+        data = search.get_dict()
+        
+        if "error" in data:
+            return f"Error API: {data['error']}", "-", "-"
             
-            if response.status_code == 200:
-                data = response.json()
-                organic_results = data.get("organic_results", [])
-                
-                for result in organic_results:
-                    posisi = result.get("position")
-                    link_url = result.get("link", "")
-                    
-                    if domain_target.lower() in link_url.lower():
-                        halaman = (posisi - 1) // 10 + 1
-                        return f"Urutan ke-{posisi}", f"Halaman {halaman}", link_url
-                        
-                return "Tidak ditemukan di halaman 1", "-", "-"
-            elif response.status_code == 429:
-                return "Kuota API Habis / Terblokir", "-", "-"
-                
-        except requests.exceptions.Timeout:
-            # Jika timeout, tunggu 2 detik sebelum mencoba lagi
-            time.sleep(2)
-            continue
-        except Exception as e:
-            return f"Error Sistem: {str(e)}", "-", "-"
+        organic_results = data.get("organic_results", [])
+        
+        for result in organic_results:
+            posisi = result.get("position")
+            link_url = result.get("link", "")
             
-    return "Koneksi Timeout (Server SerpApi Lambat, Coba Lagi Nanti)", "-", "-"
+            if domain_target.lower() in link_url.lower():
+                halaman = (posisi - 1) // 10 + 1
+                return f"Urutan ke-{posisi}", f"Halaman {halaman}", link_url
+                
+        return "Tidak ditemukan di halaman 1", "-", "-"
+        
+    except Exception as e:
+        return f"Gangguan Koneksi: {str(e)}", "-", "-"
 
 if submit_button:
     if not SERPAPI_KEY:
-        st.error("Silakan masukkan SerpApi Key Anda terlebih dahulu di sidebar sebelah kiri!")
+        st.error("Silakan masukkan SerpApi Key Anda di sidebar kiri!")
     elif not domain_input or not keywords_input:
         st.error("Mohon isi domain dan kata kunci!")
     else:
@@ -74,7 +65,7 @@ if submit_button:
         progress_bar = st.progress(0)
         
         for index, kw in enumerate(daftar_keyword):
-            urutan, halaman, url_lengkap = cek_posisi_serpapi(domain_input, kw, SERPAPI_KEY)
+            urutan, halaman, url_lengkap = cek_posisi_sdk(domain_input, kw, SERPAPI_KEY)
             
             hasil_pencarian.append({
                 "Kata Kunci (Keyword)": kw,
